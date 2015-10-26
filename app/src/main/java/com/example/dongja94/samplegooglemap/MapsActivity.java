@@ -10,19 +10,31 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
+import java.util.HashMap;
+import java.util.Map;
+
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback,
+    GoogleMap.OnMarkerClickListener, GoogleMap.OnInfoWindowClickListener, GoogleMap.OnMapClickListener {
 
     private GoogleMap mMap;
     LocationManager mLM;
+    final Map<MyPOI, Marker> mMarkerResolver = new HashMap<MyPOI, Marker>();
+    final Map<Marker, MyPOI> mPOIResolver = new HashMap<Marker, MyPOI>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +45,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 //        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
 //                .findFragmentById(R.id.map);
 //        mapFragment.getMapAsync(this);
+
 
         SupportMapFragment smf = null;
         if (savedInstanceState == null) {
@@ -45,6 +58,31 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         smf.getMapAsync(this);
 
         mLM = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        Button btn = (Button)findViewById(R.id.btn_marker);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MarkerOptions options = new MarkerOptions();
+                CameraPosition position = mMap.getCameraPosition();
+                options.position(position.target);
+                options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
+                options.anchor(0.5f, 1);
+                MyPOI poi = new MyPOI();
+
+                poi.title = "My Marker";
+                poi.snippet = "Marker Test...";
+
+                options.title(poi.title);
+                options.snippet(poi.snippet);
+                options.draggable(true);
+
+                Marker m = mMap.addMarker(options);
+
+                mMarkerResolver.put(poi, m);
+                mPOIResolver.put(m, poi);
+            }
+        });
     }
 
     LocationListener mListener = new LocationListener() {
@@ -113,17 +151,46 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 //        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
 //        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
 
+        mMap.setMyLocationEnabled(true);
+
+        mMap.setIndoorEnabled(true);
+        mMap.setTrafficEnabled(true);
+        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         mMap.getUiSettings().setZoomControlsEnabled(true);
+
+        mMap.setOnMarkerClickListener(this);
+        mMap.setOnInfoWindowClickListener(this);
+        mMap.setOnMapClickListener(this);
+
         if (cacheLocation != null) {
             moveMap(cacheLocation.getLatitude(), cacheLocation.getLongitude());
             cacheLocation = null;
         }
     }
 
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+        Toast.makeText(this, "infowindow : " + marker.getTitle() , Toast.LENGTH_SHORT).show();
+        marker.hideInfoWindow();
+    }
+
+    @Override
+    public void onMapClick(LatLng latLng) {
+
+    }
+
+    @Override
+    public boolean onMarkerClick(Marker marker) {
+        MyPOI poi = mPOIResolver.get(marker);
+        Toast.makeText(this, "title : " + poi.title , Toast.LENGTH_SHORT).show();
+        marker.showInfoWindow();
+        return true;
+    }
+
     private void moveMap(double lat, double lng) {
         CameraPosition.Builder builder = new CameraPosition.Builder();
         builder.target(new LatLng(lat, lng));
-        builder.zoom(17);
+        builder.zoom(16);
 //        builder.bearing(30);
 //        builder.tilt(30);
         CameraPosition position = builder.build();
