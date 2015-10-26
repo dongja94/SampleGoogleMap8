@@ -10,8 +10,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdate;
@@ -30,12 +34,15 @@ import java.util.Map;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback,
     GoogleMap.OnMarkerClickListener, GoogleMap.OnInfoWindowClickListener, GoogleMap.OnMapClickListener,
-    GoogleMap.OnMarkerDragListener {
+    GoogleMap.OnMarkerDragListener, GoogleMap.OnCameraChangeListener {
 
     private GoogleMap mMap;
     LocationManager mLM;
-    final Map<MyPOI, Marker> mMarkerResolver = new HashMap<MyPOI, Marker>();
-    final Map<Marker, MyPOI> mPOIResolver = new HashMap<Marker, MyPOI>();
+    final Map<POI, Marker> mMarkerResolver = new HashMap<POI, Marker>();
+    final Map<Marker, POI> mPOIResolver = new HashMap<Marker, POI>();
+    ListView listView;
+    EditText keywordVIew;
+    ArrayAdapter<POI> mAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,20 +50,23 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
 
-//        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-//                .findFragmentById(R.id.map);
-//        mapFragment.getMapAsync(this);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
 
-
-        SupportMapFragment smf = null;
-        if (savedInstanceState == null) {
-            smf = new SupportMapFragment();
-            getSupportFragmentManager().beginTransaction().add(R.id.container, smf, "map").commit();
-        } else {
-            smf = (SupportMapFragment) getSupportFragmentManager().findFragmentByTag("map");
-        }
-
-        smf.getMapAsync(this);
+        listView = (ListView)findViewById(R.id.listView);
+        keywordVIew = (EditText)findViewById(R.id.edit_keyword);
+        mAdapter = new ArrayAdapter<POI>(this, android.R.layout.simple_list_item_1);
+        listView.setAdapter(mAdapter);
+//        SupportMapFragment smf = null;
+//        if (savedInstanceState == null) {
+//            smf = new SupportMapFragment();
+//            getSupportFragmentManager().beginTransaction().add(R.id.container, smf, "map").commit();
+//        } else {
+//            smf = (SupportMapFragment) getSupportFragmentManager().findFragmentByTag("map");
+//        }
+//
+//        smf.getMapAsync(this);
 
         mLM = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
@@ -69,13 +79,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 options.position(position.target);
                 options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
                 options.anchor(0.5f, 1);
-                MyPOI poi = new MyPOI();
+                POI poi = new POI();
 
-                poi.title = "My Marker";
-                poi.snippet = "Marker Test...";
+                poi.name = "My Marker";
+                poi.upperAddrName = "Marker Test...";
 
-                options.title(poi.title);
-                options.snippet(poi.snippet);
+                options.title(poi.name);
+                options.snippet(poi.getAddress());
                 options.draggable(true);
 
                 Marker m = mMap.addMarker(options);
@@ -84,6 +94,62 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 mPOIResolver.put(m, poi);
             }
         });
+
+        btn = (Button)findViewById(R.id.btn_search);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String keyword = keywordVIew.getText().toString();
+                if (!TextUtils.isEmpty(keyword)) {
+                    NetworkManager.getInstance().findPOI(MapsActivity.this, keyword, new NetworkManager.OnResultListener<SearchPOIInfo>() {
+                        @Override
+                        public void onSuccess(SearchPOIInfo result) {
+                            clearAll();
+                            for (POI poi : result.pois.poilist) {
+                                mAdapter.add(poi);
+                                addMarker(poi);
+                            }
+                            if (result.pois.poilist.size() > 0) {
+                                moveMap(result.pois.poilist.get(0).getLatitude(), result.pois.poilist.get(0).getLongitude());
+                            }
+                        }
+
+                        @Override
+                        public void onFail(int code) {
+
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private void clearAll() {
+        for (int i = 0; i < mAdapter.getCount(); i++) {
+            POI poi = mAdapter.getItem(i);
+            Marker m = mMarkerResolver.get(poi);
+            mMarkerResolver.remove(m);
+            mPOIResolver.remove(poi);
+            m.remove();
+        }
+
+        mAdapter.clear();
+    }
+
+    private void addMarker(POI poi) {
+        MarkerOptions options = new MarkerOptions();
+        options.position(new LatLng(poi.getLatitude(), poi.getLongitude()));
+        options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
+        options.anchor(0.5f, 1);
+
+        options.title(poi.name);
+        options.snippet(poi.getAddress());
+        options.draggable(true);
+
+        Marker m = mMap.addMarker(options);
+
+        mMarkerResolver.put(poi, m);
+        mPOIResolver.put(m, poi);
     }
 
     LocationListener mListener = new LocationListener() {
@@ -185,8 +251,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public boolean onMarkerClick(Marker marker) {
-        MyPOI poi = mPOIResolver.get(marker);
-        Toast.makeText(this, "title : " + poi.title , Toast.LENGTH_SHORT).show();
+        POI poi = mPOIResolver.get(marker);
+        Toast.makeText(this, "title : " + poi.name , Toast.LENGTH_SHORT).show();
         marker.showInfoWindow();
         return true;
     }
@@ -204,6 +270,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMarkerDragEnd(Marker marker) {
         LatLng latLng = marker.getPosition();
+    }
+
+    @Override
+    public void onCameraChange(CameraPosition cameraPosition) {
+        mMap.getProjection();
     }
 
     private void moveMap(double lat, double lng) {

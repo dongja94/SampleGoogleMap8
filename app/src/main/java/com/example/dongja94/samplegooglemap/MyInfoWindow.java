@@ -16,8 +16,8 @@ import java.util.Map;
 public class MyInfoWindow implements GoogleMap.InfoWindowAdapter {
     View infoWindow;
     TextView titleView, snippetView;
-    Map<Marker, MyPOI> mPOIResolver;
-    public MyInfoWindow(Context context, Map<Marker, MyPOI> poiResolver) {
+    Map<Marker, POI> mPOIResolver;
+    public MyInfoWindow(Context context, Map<Marker, POI> poiResolver) {
         infoWindow = LayoutInflater.from(context).inflate(R.layout.view_info_window, null);
         titleView = (TextView)infoWindow.findViewById(R.id.text_title);
         snippetView = (TextView)infoWindow.findViewById(R.id.text_snippet);
@@ -31,9 +31,9 @@ public class MyInfoWindow implements GoogleMap.InfoWindowAdapter {
 
     @Override
     public View getInfoContents(Marker marker) {
-        MyPOI poi = mPOIResolver.get(marker);
-        titleView.setText(poi.title);
-        snippetView.setText(poi.snippet);
+        POI poi = mPOIResolver.get(marker);
+        titleView.setText(poi.name);
+        snippetView.setText(poi.getAddress());
         return infoWindow;
     }
 }
