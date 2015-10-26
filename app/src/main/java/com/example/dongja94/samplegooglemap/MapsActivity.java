@@ -29,7 +29,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback,
-    GoogleMap.OnMarkerClickListener, GoogleMap.OnInfoWindowClickListener, GoogleMap.OnMapClickListener {
+    GoogleMap.OnMarkerClickListener, GoogleMap.OnInfoWindowClickListener, GoogleMap.OnMapClickListener,
+    GoogleMap.OnMarkerDragListener {
 
     private GoogleMap mMap;
     LocationManager mLM;
@@ -161,6 +162,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setOnMarkerClickListener(this);
         mMap.setOnInfoWindowClickListener(this);
         mMap.setOnMapClickListener(this);
+        mMap.setOnMarkerDragListener(this);
+
+        mMap.setInfoWindowAdapter(new MyInfoWindow(this, mPOIResolver));
 
         if (cacheLocation != null) {
             moveMap(cacheLocation.getLatitude(), cacheLocation.getLongitude());
@@ -185,6 +189,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         Toast.makeText(this, "title : " + poi.title , Toast.LENGTH_SHORT).show();
         marker.showInfoWindow();
         return true;
+    }
+
+    @Override
+    public void onMarkerDragStart(Marker marker) {
+
+    }
+
+    @Override
+    public void onMarkerDrag(Marker marker) {
+
+    }
+
+    @Override
+    public void onMarkerDragEnd(Marker marker) {
+        LatLng latLng = marker.getPosition();
     }
 
     private void moveMap(double lat, double lng) {
