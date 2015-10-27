@@ -3,6 +3,7 @@ package com.example.dongja94.samplegooglemap;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -12,10 +13,12 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdate;
@@ -28,6 +31,7 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +47,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     ListView listView;
     EditText keywordVIew;
     ArrayAdapter<POI> mAdapter;
+    RadioGroup group;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,9 +60,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapFragment.getMapAsync(this);
 
         listView = (ListView)findViewById(R.id.listView);
+        group = (RadioGroup)findViewById(R.id.group);
         keywordVIew = (EditText)findViewById(R.id.edit_keyword);
         mAdapter = new ArrayAdapter<POI>(this, android.R.layout.simple_list_item_1);
         listView.setAdapter(mAdapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                POI poi = (POI)listView.getItemAtPosition(position);
+                Marker m = mMarkerResolver.get(poi);
+                moveMap(m);
+            }
+        });
 //        SupportMapFragment smf = null;
 //        if (savedInstanceState == null) {
 //            smf = new SupportMapFragment();
@@ -122,6 +136,67 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
         });
+
+        btn = (Button)findViewById(R.id.btn_route);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (start != null && end != null) {
+                    NetworkManager.getInstance().findPath(MapsActivity.this, start, end, new NetworkManager.OnResultListener<CarRouteInfo>() {
+                        @Override
+                        public void onSuccess(CarRouteInfo result) {
+                            if (result.features != null && result.features.size() > 0) {
+                                int totalDistance = result.features.get(0).properties.totalDistance;
+                                int totalTime = result.features.get(0).properties.totalTime;
+                                int totalFare = result.features.get(0).properties.totalFare;
+                                Toast.makeText(MapsActivity.this, "total : " + totalDistance + "," + totalTime, Toast.LENGTH_SHORT).show();
+                            }
+
+                            if (result.features != null && result.features.size() > 0) {
+                                PolylineOptions options = new PolylineOptions();
+                                for (CarFeature feature : result.features) {
+                                    if (feature.geometry.type.equals("LineString")) {
+                                        double[] coord = feature.geometry.coordinates;
+                                        for (int i = 0; i < coord.length; i+= 2) {
+                                            options.add(new LatLng(coord[i+1],coord[i]));
+                                        }
+                                    }
+                                }
+                                options.color(Color.RED);
+                                options.width(10);
+                                mMap.addPolyline(options);
+                            }
+
+
+                            start = null;
+                            end = null;
+                        }
+
+                        @Override
+                        public void onFail(int code) {
+                            start = null;
+                            end = null;
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private void moveMap(final Marker marker) {
+        CameraUpdate update = CameraUpdateFactory.newLatLng(marker.getPosition());
+        mMap.animateCamera(update, new GoogleMap.CancelableCallback() {
+            @Override
+            public void onFinish() {
+                marker.showInfoWindow();
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+        });
+
     }
 
     private void clearAll() {
@@ -238,10 +313,22 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    LatLng start, end;
+
     @Override
     public void onInfoWindowClick(Marker marker) {
-        Toast.makeText(this, "infowindow : " + marker.getTitle() , Toast.LENGTH_SHORT).show();
+//        Toast.makeText(this, "infowindow : " + marker.getTitle() , Toast.LENGTH_SHORT).show();
         marker.hideInfoWindow();
+        switch (group.getCheckedRadioButtonId()) {
+            case R.id.radio_start :
+                start = marker.getPosition();
+                Toast.makeText(this, "set start", Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.radio_end :
+                end = marker.getPosition();
+                Toast.makeText(this, "set end", Toast.LENGTH_SHORT).show();
+                break;
+        }
     }
 
     @Override

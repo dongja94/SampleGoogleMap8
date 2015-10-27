@@ -18,7 +18,7 @@
             style="?android:attr/buttonStyleSmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="marker"
+            android:text="search"
             android:id="@+id/btn_search" />
     </LinearLayout>
 
@@ -33,6 +33,34 @@
             android:layout_height="wrap_content"
             android:text="marker"
             android:id="@+id/btn_marker" />
+
+        <RadioGroup
+            android:id="@+id/group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="start"
+                android:id="@+id/radio_start"
+                android:checked="true" />
+
+            <RadioButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="end"
+                android:id="@+id/radio_end"
+                android:checked="false" />
+        </RadioGroup>
+
+        <Button
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="route"
+            android:id="@+id/btn_route" />
     </LinearLayout>
 
     <FrameLayout

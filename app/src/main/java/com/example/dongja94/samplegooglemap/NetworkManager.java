@@ -2,7 +2,9 @@ package com.example.dongja94.samplegooglemap;
 
 import android.content.Context;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.MySSLSocketFactory;
 import com.loopj.android.http.PersistentCookieStore;
@@ -35,6 +37,9 @@ public class NetworkManager {
 
     AsyncHttpClient client;
     Gson gson;
+    Gson routeGson;
+    Header[] headers;
+
     private NetworkManager() {
 
         try {
@@ -61,6 +66,12 @@ public class NetworkManager {
 
 
         gson = new Gson();
+        routeGson = new GsonBuilder().registerTypeAdapter(Geometry.class, new GeometryDeserializer()).create();
+
+        headers = new Header[2];
+        headers[0] = new BasicHeader("Accept", "application/json");
+        headers[1] = new BasicHeader("appKey", "458a10f5-c07e-34b5-b2bd-4a891e024c2a");
+
    }
 
     public HttpClient getHttpClient() {
@@ -83,10 +94,6 @@ public class NetworkManager {
         params.put("searchKeyword", keyword);
         params.put("resCoordType", "WGS84GEO");
 
-        Header[] headers = new Header[2];
-        headers[0] = new BasicHeader("Accept", "application/json");
-        headers[1] = new BasicHeader("appKey", "458a10f5-c07e-34b5-b2bd-4a891e024c2a");
-
         client.get(context, FIND_POI_URL, headers, params, new TextHttpResponseHandler() {
             @Override
             public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
@@ -100,4 +107,30 @@ public class NetworkManager {
             }
         });
     }
+
+    public static final String CAR_ROUTE_UTL = "https://apis.skplanetx.com/tmap/routes?version=1";
+    public void findPath(Context context, LatLng start, LatLng end, final OnResultListener<CarRouteInfo> listener) {
+        RequestParams params = new RequestParams();
+        params.put("endX",end.longitude);
+        params.put("endY",end.latitude);
+        params.put("startX",start.longitude);
+        params.put("startY",start.latitude);
+        params.put("resCoordType","WGS84GEO");
+        params.put("reqCoordType","WGS84GEO");
+
+        client.post(context, CAR_ROUTE_UTL, headers, params, null, new TextHttpResponseHandler() {
+            @Override
+            public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
+                listener.onFail(statusCode);
+            }
+
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, String responseString) {
+                CarRouteInfo info = routeGson.fromJson(responseString, CarRouteInfo.class);
+                listener.onSuccess(info);
+            }
+        });
+    }
+
+
 }
